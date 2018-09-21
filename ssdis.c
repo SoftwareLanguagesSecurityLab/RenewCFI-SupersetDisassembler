@@ -35,7 +35,7 @@ void ss_open(cs_arch arch, cs_mode mode, csh* handle){
 	h->valid_seq = false;
 }
 
-bool ss_disasm_iter(csh handle, const uint8_t **code, size_t* code_size,
+uint8_t ss_disasm_iter(csh handle, const uint8_t **code, size_t* code_size,
 		uint64_t* address, cs_insn* insn){
 	ss_handle* h = (ss_handle*)handle;
 	uint64_t map_offset;
@@ -56,7 +56,7 @@ bool ss_disasm_iter(csh handle, const uint8_t **code, size_t* code_size,
 	  cs_disasm_iter(h->cs_handle, code, code_size, address, insn) ){
 		h->disasm_map[map_offset] = 1;
 		h->valid_seq = true;
-		return true;
+		return SS_SUCCESS;
 	}else if(h->curr_size > 0){
 		if( h->valid_seq ){
 			// If this instruction was preceded by a valid sequence,
@@ -86,18 +86,17 @@ bool ss_disasm_iter(csh handle, const uint8_t **code, size_t* code_size,
 				cs_disasm_iter(h->cs_handle,
 					&hlt_ptr, &hlt_sze, address, insn);	
 			}
-			// Loop until we encounter a new offset
-			// so that we don't insert useless jmps
-			//do{
-				h->curr_offset++;
-				h->curr_size--;
-				h->curr_addr++;
-			//	map_offset = h->curr_addr - h->orig_addr;
-			//}while( h->disasm_map[map_offset] && h->curr_size > 1 );
+			// Prepare to start disassembly from the next
+			// starting offset.
+			// If the next offset has been visited, we will find
+			// out the next time this function is called.
+			h->curr_offset++;
+			h->curr_size--;
+			h->curr_addr++;
 			*code = h->curr_offset;
 			*code_size = h->curr_size;
 			*address = h->curr_addr;
-			return true;
+			return SS_SPECIAL;
 		}else{
 			// If this instruction was not preceded by a valid
 			// sequence, then we should skip forward, because we
@@ -105,7 +104,7 @@ bool ss_disasm_iter(csh handle, const uint8_t **code, size_t* code_size,
 			// Loop until a valid instruction at an address we have
 			// not encountered yet is reached or we hit the end
 			do{
-				if( h->curr_size <= 1 ) return false;
+				if( h->curr_size <= 1 ) return SS_END;
 				h->curr_offset++;
 				h->curr_size--;
 				h->curr_addr++;
@@ -118,10 +117,10 @@ bool ss_disasm_iter(csh handle, const uint8_t **code, size_t* code_size,
 					code, code_size, address, insn));
 			h->disasm_map[map_offset] = 1;
 			h->valid_seq = true;
-			return true;
+			return SS_SUCCESS;
 		}
 	}else{
-		return false;
+		return SS_END;
 	}
 }  
 
