@@ -5,7 +5,7 @@ all:
 	$(CC) -g driver.c libssdis.a ssdis.h /usr/lib/libcapstone.a -o driver
 
 all32:
-	$(CC) -m32 -g -c ssdis.c ssdis.h
+	$(CC) -m32 -fPIC -g -c ssdis.c ssdis.h
 	$(AR) -rsc libssdis.a ssdis.o
 	#libcapstone32.a is NOT installed by capstone!
 	#This is custom named to allow concurrent 64 and 32 bit installations!

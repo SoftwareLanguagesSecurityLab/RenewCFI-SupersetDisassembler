@@ -1,2 +1,6 @@
+*.o
+*.a
+.gdb_history
+peda-session-driver.txt
 driver
 driver32
