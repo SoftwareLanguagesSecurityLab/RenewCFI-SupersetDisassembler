@@ -1,15 +1,5 @@
 #include "ssdis.h"
 
-typedef struct ss_handle{
-	csh cs_handle; // Opaque handle for Capstone
-	uint8_t* disasm_map; // Pointer to array tracking visited offsets
-	size_t orig_size; // Size of the initial code
-	uint64_t orig_addr; // Original base address
-	const uint8_t* curr_offset; // Starting offset for linear disassembly
-	size_t curr_size; // Current size of bytes based on starting offset
-	uint64_t curr_addr; // Current address based on starting offset
-	bool valid_seq; // Whether we found at least 1 new valid instruction
-} ss_handle;
 
 /* Template bytes for direct unconditional jump instruction.
    The instruction jumps to itself. */
@@ -20,42 +10,42 @@ size_t jmp_template_size = 5;
 const uint8_t* hlt_template = "\xf4";
 size_t hlt_template_size = 1;
 
-void ss_open(cs_arch arch, cs_mode mode, csh* handle){
-	csh cs_handle;
-	cs_open(arch, mode, &cs_handle);
-	ss_handle* h = malloc(sizeof(ss_handle));
-	*handle = (uintptr_t)h;
-	h->cs_handle = cs_handle;
-	/* Start data uninitialized until we get the code */
-	h->disasm_map = 0;
-	h->curr_offset = 0;
-	h->curr_size = 0;
-	h->orig_size = 0;
-	h->curr_addr = 0;
-	h->valid_seq = false;
+void populate_insn(ss_handle* handle, ss_insn* insn){
+	insn->id = ud_insn_mnemonic(&(handle->dis_handle)); 
+	insn->address = ud_insn_off(&(handle->dis_handle));
+	insn->size = ud_insn_len(&(handle->dis_handle));
+	insn->insn_str = ud_insn_asm(&(handle->dis_handle));
 }
 
-uint8_t ss_disasm_iter(csh handle, const uint8_t **code, size_t* code_size,
-		uint64_t* address, cs_insn* insn){
-	ss_handle* h = (ss_handle*)handle;
-	uint64_t map_offset;
-	/* Check whether we have set cur_offset.  If not, we are starting
-		a new disassembly, and need to set the start offset and size */
-	if( !(h->curr_offset) ){
-		h->orig_size = *code_size;
-		h->orig_addr = *address;
-		h->curr_offset = *code;
-		h->curr_size = *code_size;
-		h->curr_addr = *address;
-		//Allocate as many bytes as the size of the original code
-		h->disasm_map = calloc(h->orig_size,1);
-	}
-	map_offset = *address - h->orig_addr;
+void ss_open(ss_mode mode, ss_handle* handle,
+		uint8_t* code, size_t code_size, uint64_t address){
+	ud_init(&(handle->dis_handle));
+	ud_set_mode(&(handle->dis_handle), mode);
+	ud_set_syntax(&(handle->dis_handle), UD_SYN_INTEL);
+	/* Initialize state with initial code buffer */
+	handle->valid_seq = false;
+	handle->orig_size = code_size;
+	handle->orig_addr = address;
+	handle->curr_offset = code;
+	handle->curr_size = code_size;
+	handle->curr_addr = address;
+	handle->map_offset = 0;
+	//Allocate as many bytes as the size of the original code
+	page_calloc(&(handle->map_mem), handle->orig_size);
+	handle->disasm_map = handle->map_mem.address;
+
+	ud_set_pc(&(handle->dis_handle), address);
+	ud_set_input_buffer(&(handle->dis_handle), code, code_size);
+}
+
+uint8_t ss_disassemble(ss_handle* handle, ss_insn* insn){
+	ss_handle* h = handle;
 	// Check that the instruction has not been visited and is valid
-	if( !h->disasm_map[map_offset] &&
-	  cs_disasm_iter(h->cs_handle, code, code_size, address, insn) ){
-		h->disasm_map[map_offset] = 1;
+	if( !h->disasm_map[h->map_offset] && ud_disassemble(&(h->dis_handle)) ){
+		h->disasm_map[h->map_offset] = 1;
 		h->valid_seq = true;
+		populate_insn(handle,insn);
+		h->map_offset = (insn->address + insn->size) - h->orig_addr;
 		return SS_SUCCESS;
 	}else if(h->curr_size > 0){
 		if( h->valid_seq ){
@@ -67,25 +57,24 @@ uint8_t ss_disasm_iter(csh handle, const uint8_t **code, size_t* code_size,
 			// If we have already encountered this offset,
 			// return a jump instruction to the offset
 			// and try next offset
-			if( h->disasm_map[map_offset] ){
+			if( h->disasm_map[h->map_offset] ){
 				// Return a jmp jumping to itself, since
 				// the target address is at its own address.
 				// We must copy the template and its size since
 				// cs_disasm_iter has the side-effect of
 				// changing the input pointers.
-				const uint8_t* jmp_ptr = jmp_template;
-				size_t jmp_sze = jmp_template_size; 
-				cs_disasm_iter(h->cs_handle,
-					&jmp_ptr, &jmp_sze, address, insn);	
+				ud_set_input_buffer(&(h->dis_handle),
+					jmp_template, jmp_template_size); 
+				ud_disassemble(&(h->dis_handle));
 			}else{
 				// If we get here, we encountered an invalid
 				// instruction.  Therefore, insert a hlt to
 				// ensure safe execution.
-				const uint8_t* hlt_ptr = hlt_template;
-				size_t hlt_sze = hlt_template_size;
-				cs_disasm_iter(h->cs_handle,
-					&hlt_ptr, &hlt_sze, address, insn);	
+				ud_set_input_buffer(&(h->dis_handle),
+					hlt_template, hlt_template_size); 
+				ud_disassemble(&(h->dis_handle));
 			}
+			populate_insn(handle,insn);
 			// Prepare to start disassembly from the next
 			// starting offset.
 			// If the next offset has been visited, we will find
@@ -93,9 +82,10 @@ uint8_t ss_disasm_iter(csh handle, const uint8_t **code, size_t* code_size,
 			h->curr_offset++;
 			h->curr_size--;
 			h->curr_addr++;
-			*code = h->curr_offset;
-			*code_size = h->curr_size;
-			*address = h->curr_addr;
+			ud_set_input_buffer(&(h->dis_handle),
+				h->curr_offset, h->curr_size);
+			ud_set_pc(&(h->dis_handle), h->curr_addr); 
+			h->map_offset = h->curr_addr - h->orig_addr;
 			return SS_SPECIAL;
 		}else{
 			// If this instruction was not preceded by a valid
@@ -108,15 +98,17 @@ uint8_t ss_disasm_iter(csh handle, const uint8_t **code, size_t* code_size,
 				h->curr_offset++;
 				h->curr_size--;
 				h->curr_addr++;
-				*code = h->curr_offset;
-				*code_size = h->curr_size;
-				*address = h->curr_addr;
-				map_offset = h->curr_addr - h->orig_addr;
-			}while( h->disasm_map[map_offset] ||
-				!cs_disasm_iter(h->cs_handle,
-					code, code_size, address, insn));
-			h->disasm_map[map_offset] = 1;
+				ud_set_input_buffer(&(h->dis_handle),
+					h->curr_offset, h->curr_size);
+				ud_set_pc(&(h->dis_handle), h->curr_addr); 
+				h->map_offset = h->curr_addr - h->orig_addr;
+			}while( h->disasm_map[h->map_offset] ||
+				!ud_disassemble(&(h->dis_handle)) );
+			h->disasm_map[h->map_offset] = 1;
 			h->valid_seq = true;
+			populate_insn(handle,insn);
+			h->map_offset =
+				(insn->address + insn->size) - h->orig_addr;
 			return SS_SUCCESS;
 		}
 	}else{
@@ -124,11 +116,8 @@ uint8_t ss_disasm_iter(csh handle, const uint8_t **code, size_t* code_size,
 	}
 }  
 
-void ss_close(csh* handle){
-	ss_handle* h = (ss_handle*)(*handle);
-	cs_close(&(h->cs_handle));
-	if( h->disasm_map ){
-		free(h->disasm_map);
+void ss_close(ss_handle* handle){
+	if( handle->disasm_map ){
+		page_free(&handle->map_mem);
 	}
-	free(h);
 }

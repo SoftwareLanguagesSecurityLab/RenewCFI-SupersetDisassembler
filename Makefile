@@ -2,14 +2,13 @@
 all:
 	$(CC) -g -c ssdis.c ssdis.h
 	$(AR) -rsc libssdis.a ssdis.o
-	$(CC) -g driver.c libssdis.a ssdis.h /usr/lib/libcapstone.a -o driver
+	$(CC) -g driver.c libssdis.a ssdis.h /usr/local/lib/libudis86.a -o driver
 
 all32:
 	$(CC) -m32 -fPIC -g -c ssdis.c ssdis.h
 	$(AR) -rsc libssdis.a ssdis.o
-	#libcapstone32.a is NOT installed by capstone!
-	#This is custom named to allow concurrent 64 and 32 bit installations!
-	$(CC) -m32 -g driver32.c libssdis.a ssdis.h /usr/lib/libcapstone32.a -o driver32
+	#Note: libudis86 must be compiled for the correct architecture
+	$(CC) -m32 -g driver32.c libssdis.a ssdis.h /usr/local/lib/libudis86.a /usr/local/lib/libpagealloc.a -o driver32
 
 install32: all32
 	cp ssdis.h /usr/local/include/ssdis32.h
