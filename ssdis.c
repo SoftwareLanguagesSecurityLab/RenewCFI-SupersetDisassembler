@@ -3,11 +3,11 @@
 
 /* Template bytes for direct unconditional jump instruction.
    The instruction jumps to itself. */
-const uint8_t* jmp_template = "\xe9\xfb\xff\xff\xff";
+const uint8_t* jmp_template = (uint8_t*)"\xe9\xfb\xff\xff\xff";
 size_t jmp_template_size = 5;
 /* Template bytes for halt instruction.  Used after the last instruction, or
    to terminate sequences that end in invalid instructions. */
-const uint8_t* hlt_template = "\xf4";
+const uint8_t* hlt_template = (uint8_t*)"\xf4";
 size_t hlt_template_size = 1;
 
 void populate_insn(ss_handle* handle, ss_insn* insn){
@@ -41,7 +41,9 @@ void ss_open(ss_mode mode, ss_handle* handle,
 uint8_t ss_disassemble(ss_handle* handle, ss_insn* insn){
 	ss_handle* h = handle;
 	// Check that the instruction has not been visited and is valid
-	if( !h->disasm_map[h->map_offset] && ud_disassemble(&(h->dis_handle)) ){
+	if( !h->disasm_map[h->map_offset] &&
+			ud_disassemble(&(h->dis_handle)) &&
+			ud_insn_mnemonic(&(h->dis_handle)) != UD_Iinvalid ){
 		h->disasm_map[h->map_offset] = 1;
 		h->valid_seq = true;
 		populate_insn(handle,insn);
@@ -103,7 +105,8 @@ uint8_t ss_disassemble(ss_handle* handle, ss_insn* insn){
 				ud_set_pc(&(h->dis_handle), h->curr_addr); 
 				h->map_offset = h->curr_addr - h->orig_addr;
 			}while( h->disasm_map[h->map_offset] ||
-				!ud_disassemble(&(h->dis_handle)) );
+				!ud_disassemble(&(h->dis_handle)) ||
+				ud_insn_mnemonic(&(h->dis_handle)) == UD_Iinvalid );
 			h->disasm_map[h->map_offset] = 1;
 			h->valid_seq = true;
 			populate_insn(handle,insn);

@@ -36,6 +36,6 @@ typedef struct ss_handle{
 
 void ss_open(ss_mode mode, ss_handle* handle, uint8_t* code, size_t code_size, uint64_t address);
 
-uint8_t ss_disasm_iter(ss_handle* handle, ss_insn* insn);
+uint8_t ss_disassemble(ss_handle* handle, ss_insn* insn);
 
 void ss_close(ss_handle* handle);
