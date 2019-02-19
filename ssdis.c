@@ -1,6 +1,5 @@
 #include "ssdis.h"
 
-
 /* Template bytes for direct unconditional jump instruction.
    The instruction jumps to itself. */
 const uint8_t* jmp_template = (uint8_t*)"\xe9\xfb\xff\xff\xff";
@@ -18,7 +17,7 @@ void populate_insn(ss_handle* handle, ss_insn* insn){
 }
 
 void ss_open(ss_mode mode, ss_handle* handle,
-		uint8_t* code, size_t code_size, uint64_t address){
+		const uint8_t* code, size_t code_size, uint64_t address){
 	ud_init(&(handle->dis_handle));
 	ud_set_mode(&(handle->dis_handle), mode);
 	ud_set_syntax(&(handle->dis_handle), UD_SYN_INTEL);

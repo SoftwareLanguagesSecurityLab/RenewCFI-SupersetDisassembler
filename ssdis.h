@@ -21,6 +21,31 @@ typedef uint8_t ss_mode;
 #define SS_MODE_32 32
 #define SS_MODE_64 64
 
+#define SS_INS_JMP	UD_Ijmp
+#define SS_INS_RET	UD_Iret
+#define SS_INS_CALL	UD_Icall
+#define SS_INS_JAE	UD_Ijae
+#define SS_INS_JA	UD_Ija
+#define SS_INS_JBE	UD_Ijbe
+#define SS_INS_JB	UD_Ijb
+#define SS_INS_JCXZ	UD_Ijcxz
+#define SS_INS_JECXZ	UD_Ijecxz
+#define SS_INS_JE	UD_Ijz		// je/jz are synonyms
+#define SS_INS_JZ	UD_Ijz
+#define SS_INS_JGE	UD_Ijge
+#define SS_INS_JG	UD_Ijg
+#define SS_INS_JLE	UD_Ijle
+#define SS_INS_JL	UD_Ijl
+#define SS_INS_JNE	UD_Ijnz		// jne/jnz are synonyms
+#define SS_INS_JNZ	UD_Ijnz
+#define SS_INS_JNO	UD_Ijno
+#define SS_INS_JNP	UD_Ijnp
+#define SS_INS_JNS	UD_Ijns
+#define SS_INS_JO	UD_Ijo
+#define SS_INS_JP	UD_Ijp
+#define SS_INS_JRCXZ	UD_Ijrcxz
+#define SS_INS_JS	UD_Ijs
+
 typedef struct ss_handle{
 	ud_t dis_handle; // Opaque handle for disassembler
 	pa_entry_t map_mem; // Handle for allocated disasm_map memory
@@ -34,7 +59,7 @@ typedef struct ss_handle{
 	bool valid_seq; // Whether we found at least 1 new valid instruction
 } ss_handle;
 
-void ss_open(ss_mode mode, ss_handle* handle, uint8_t* code, size_t code_size, uint64_t address);
+void ss_open(ss_mode mode, ss_handle* handle, const uint8_t* code, size_t code_size, uint64_t address);
 
 uint8_t ss_disassemble(ss_handle* handle, ss_insn* insn);
 
