@@ -13,6 +13,7 @@ void populate_insn(ss_handle* handle, ss_insn* insn){
 	insn->id = ud_insn_mnemonic(&(handle->dis_handle)); 
 	insn->address = ud_insn_off(&(handle->dis_handle));
 	insn->size = ud_insn_len(&(handle->dis_handle));
+	insn->bytes = ud_insn_ptr(&(handle->dis_handle));
 	insn->insn_str = ud_insn_asm(&(handle->dis_handle));
 }
 

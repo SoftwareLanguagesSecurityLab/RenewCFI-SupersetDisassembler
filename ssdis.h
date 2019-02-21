@@ -9,7 +9,7 @@ typedef struct ss_insn {
 	enum ud_mnemonic_code id;
 	uint64_t address;
 	uint16_t size;
-	uint8_t* bytes;
+	const uint8_t* bytes;
 	const char* insn_str;
 } ss_insn;
 
