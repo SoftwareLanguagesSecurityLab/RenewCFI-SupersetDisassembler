@@ -41,7 +41,7 @@ void ss_open(ss_mode mode, ss_handle* handle,
 uint8_t ss_disassemble(ss_handle* handle, ss_insn* insn){
 	ss_handle* h = handle;
 	// Check that the instruction has not been visited and is valid
-	if( !h->disasm_map[h->map_offset] &&
+	if( h->map_offset < h->orig_size && !h->disasm_map[h->map_offset] &&
 			ud_disassemble(&(h->dis_handle)) &&
 			ud_insn_mnemonic(&(h->dis_handle)) != UD_Iinvalid ){
 		h->disasm_map[h->map_offset] = 1;
@@ -59,7 +59,8 @@ uint8_t ss_disassemble(ss_handle* handle, ss_insn* insn){
 			// If we have already encountered this offset,
 			// return a jump instruction to the offset
 			// and try next offset
-			if( h->disasm_map[h->map_offset] ){
+			if( h->map_offset < h->orig_size &&
+					 h->disasm_map[h->map_offset] ){
 				// Return a jmp jumping to itself, since
 				// the target address is at its own address.
 				// We must copy the template and its size since
@@ -72,6 +73,12 @@ uint8_t ss_disassemble(ss_handle* handle, ss_insn* insn){
 				// If we get here, we encountered an invalid
 				// instruction.  Therefore, insert a hlt to
 				// ensure safe execution.
+				// An extra type of invalid instruction is
+				// if we have gone off the end of the code
+				// buffer, in which case we also want to return
+				// a hlt to indicate that code can't flow off
+				// the end.  This hlt will have an address
+				// after the end of the buffer.
 				ud_set_input_buffer(&(h->dis_handle),
 					hlt_template, hlt_template_size); 
 				ud_disassemble(&(h->dis_handle));
