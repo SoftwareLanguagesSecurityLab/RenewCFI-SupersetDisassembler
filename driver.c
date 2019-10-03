@@ -8,7 +8,7 @@ int main(){
 	size_t code_size = 36;	// size of code
 	uint64_t address = 0x80485d0;	// address of first instruction to be disassembled
 
-	ss_open(SS_MODE_32, &handle, code, code_size, address);
+	ss_open(SS_MODE_32, true, &handle, code, code_size, address);
 	// disassemble and store in insn
     	while(ss_disassemble(&handle, &insn)) {
 		printf("0x%llx: %s\n", insn.address, insn.insn_str);

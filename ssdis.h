@@ -59,7 +59,7 @@ typedef struct ss_handle{
 	bool valid_seq; // Whether we found at least 1 new valid instruction
 } ss_handle;
 
-void ss_open(ss_mode mode, ss_handle* handle, const uint8_t* code, size_t code_size, uint64_t address);
+void ss_open(ss_mode mode, bool gen_insn_str, ss_handle* handle, const uint8_t* code, size_t code_size, uint64_t address);
 
 uint8_t ss_disassemble(ss_handle* handle, ss_insn* insn);
 

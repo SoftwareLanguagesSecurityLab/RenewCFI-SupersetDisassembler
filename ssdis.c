@@ -17,11 +17,15 @@ void populate_insn(ss_handle* handle, ss_insn* insn){
 	insn->insn_str = ud_insn_asm(&(handle->dis_handle));
 }
 
-void ss_open(ss_mode mode, ss_handle* handle,
+void ss_open(ss_mode mode, bool gen_insn_str, ss_handle* handle,
 		const uint8_t* code, size_t code_size, uint64_t address){
 	ud_init(&(handle->dis_handle));
 	ud_set_mode(&(handle->dis_handle), mode);
-	ud_set_syntax(&(handle->dis_handle), UD_SYN_INTEL);
+	if( gen_insn_str ){
+		ud_set_syntax(&(handle->dis_handle), UD_SYN_INTEL);
+	}else{
+		ud_set_syntax(&(handle->dis_handle), NULL);
+	}
 	/* Initialize state with initial code buffer */
 	handle->valid_seq = false;
 	handle->orig_size = code_size;
