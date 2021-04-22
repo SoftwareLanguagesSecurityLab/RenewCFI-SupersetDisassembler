@@ -1,5 +1,13 @@
 #include "ssdis.h"
 
+#ifdef RECORD_DISASM_STATS
+struct timespec disasm_timer = {0,0};
+struct timespec new_inst_timer = {0,0};
+struct timespec valid_seq_timer = {0,0};
+struct timespec invalid_seq_timer = {0,0};
+struct timespec end_seq_timer = {0,0};
+#endif
+
 /* Template bytes for direct unconditional jump instruction.
    The instruction jumps to itself. */
 const uint8_t* jmp_template = (uint8_t*)"\xe9\xfb\xff\xff\xff";
@@ -44,16 +52,33 @@ void ss_open(ss_mode mode, bool gen_insn_str, ss_handle* handle,
 
 uint8_t ss_disassemble(ss_handle* handle, ss_insn* insn){
 	ss_handle* h = handle;
+#ifdef RECORD_DISASM_STATS
+  struct timespec start_time, start_time2, end_time;
+  clock_gettime(CLOCK_MONOTONIC, &start_time);
+#endif
 	// Check that the instruction has not been visited and is valid
 	if( h->map_offset < h->orig_size && !h->disasm_map[h->map_offset] &&
 			ud_disassemble(&(h->dis_handle)) &&
 			ud_insn_mnemonic(&(h->dis_handle)) != UD_Iinvalid ){
+#ifdef RECORD_DISASM_STATS
+    clock_gettime(CLOCK_MONOTONIC, &start_time2);
+#endif
 		h->disasm_map[h->map_offset] = 1;
 		h->valid_seq = true;
 		populate_insn(handle,insn);
 		h->map_offset = (insn->address + insn->size) - h->orig_addr;
+#ifdef RECORD_DISASM_STATS
+    clock_gettime(CLOCK_MONOTONIC, &end_time);
+    disasm_timer.tv_sec += end_time.tv_sec - start_time.tv_sec;
+    disasm_timer.tv_nsec += end_time.tv_nsec - start_time.tv_nsec;
+    new_inst_timer.tv_sec += end_time.tv_sec - start_time2.tv_sec;
+    new_inst_timer.tv_nsec += end_time.tv_nsec - start_time2.tv_nsec;
+#endif
 		return SS_SUCCESS;
 	}else if(h->curr_size > 0){
+#ifdef RECORD_DISASM_STATS
+    clock_gettime(CLOCK_MONOTONIC, &start_time2);
+#endif
 		if( h->valid_seq ){
 			// If this instruction was preceded by a valid sequence,
 			// then we should return a special instruction, but
@@ -99,6 +124,13 @@ uint8_t ss_disassemble(ss_handle* handle, ss_insn* insn){
 				h->curr_offset, h->curr_size);
 			ud_set_pc(&(h->dis_handle), h->curr_addr); 
 			h->map_offset = h->curr_addr - h->orig_addr;
+#ifdef RECORD_DISASM_STATS
+      clock_gettime(CLOCK_MONOTONIC, &end_time);
+      disasm_timer.tv_sec += end_time.tv_sec - start_time.tv_sec;
+      disasm_timer.tv_nsec += end_time.tv_nsec - start_time.tv_nsec;
+      valid_seq_timer.tv_sec += end_time.tv_sec - start_time2.tv_sec;
+      valid_seq_timer.tv_nsec += end_time.tv_nsec - start_time2.tv_nsec;
+#endif
 			return SS_SPECIAL;
 		}else{
 			// If this instruction was not preceded by a valid
@@ -107,7 +139,16 @@ uint8_t ss_disassemble(ss_handle* handle, ss_insn* insn){
 			// Loop until a valid instruction at an address we have
 			// not encountered yet is reached or we hit the end
 			do{
-				if( h->curr_size <= 1 ) return SS_END;
+				if( h->curr_size <= 1 ){
+#ifdef RECORD_DISASM_STATS
+          clock_gettime(CLOCK_MONOTONIC, &end_time);
+          disasm_timer.tv_sec += end_time.tv_sec - start_time.tv_sec;
+          disasm_timer.tv_nsec += end_time.tv_nsec - start_time.tv_nsec;
+          end_seq_timer.tv_sec += end_time.tv_sec - start_time2.tv_sec;
+          end_seq_timer.tv_nsec += end_time.tv_nsec - start_time2.tv_nsec;
+#endif
+          return SS_END;
+        }
 				h->curr_offset++;
 				h->curr_size--;
 				h->curr_addr++;
@@ -123,9 +164,21 @@ uint8_t ss_disassemble(ss_handle* handle, ss_insn* insn){
 			populate_insn(handle,insn);
 			h->map_offset =
 				(insn->address + insn->size) - h->orig_addr;
+#ifdef RECORD_DISASM_STATS
+      clock_gettime(CLOCK_MONOTONIC, &end_time);
+      disasm_timer.tv_sec += end_time.tv_sec - start_time.tv_sec;
+      disasm_timer.tv_nsec += end_time.tv_nsec - start_time.tv_nsec;
+      invalid_seq_timer.tv_sec += end_time.tv_sec - start_time2.tv_sec;
+      invalid_seq_timer.tv_nsec += end_time.tv_nsec - start_time2.tv_nsec;
+#endif
 			return SS_SUCCESS;
 		}
 	}else{
+#ifdef RECORD_DISASM_STATS
+    clock_gettime(CLOCK_MONOTONIC, &end_time);
+    disasm_timer.tv_sec += end_time.tv_sec - start_time.tv_sec;
+    disasm_timer.tv_nsec += end_time.tv_nsec - start_time.tv_nsec;
+#endif
 		return SS_END;
 	}
 }  

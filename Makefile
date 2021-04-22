@@ -1,9 +1,9 @@
 
 all:
-	$(CC) -m32 -Wall -Wextra -fPIC -g -c ssdis.c ssdis.h
+	$(CC) -m32 -Wall -Wextra -fPIC -g -O2 -c ssdis.c ssdis.h
 	$(AR) -rsc libssdis.a ssdis.o
 	#Note: libudis86 must be compiled for the correct architecture
-	$(CC) -m32 -Wall -Wextra -g driver.c libssdis.a ssdis.h /usr/local/lib/libudis86.a /usr/local/lib/libpagealloc.a -o driver
+	#$(CC) -m32 -Wall -Wextra -g driver.c libssdis.a ssdis.h /usr/local/lib/libudis86.a /usr/local/lib/libpagealloc.a -o driver
 
 all64:
 	$(CC) -Wall -Wextra -g -c ssdis.c ssdis.h

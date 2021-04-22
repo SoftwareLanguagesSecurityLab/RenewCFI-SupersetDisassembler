@@ -5,6 +5,18 @@
 #include <udis86.h>
 #include <pagealloc.h>
 
+#define RECORD_DISASM_STATS
+
+#ifdef RECORD_DISASM_STATS
+#include <time.h>
+
+extern struct timespec disasm_timer;
+extern struct timespec new_inst_timer;
+extern struct timespec valid_seq_timer;
+extern struct timespec invalid_seq_timer;
+extern struct timespec end_seq_timer;
+#endif
+
 typedef struct ss_insn {
 	enum ud_mnemonic_code id;
 	uint64_t address;
