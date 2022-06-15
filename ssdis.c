@@ -18,11 +18,11 @@ const uint8_t* hlt_template = (uint8_t*)"\xf4";
 size_t hlt_template_size = 1;
 
 void populate_insn(ss_handle* handle, ss_insn* insn){
-	insn->id = ud_insn_mnemonic(&(handle->dis_handle)); 
-	insn->address = ud_insn_off(&(handle->dis_handle));
-	insn->size = ud_insn_len(&(handle->dis_handle));
+	insn->id = handle->dis_handle.mnemonic;// ud_insn_mnemonic 
+	insn->address = handle->dis_handle.insn_offset;// ud_insn_off
+	insn->size = handle->dis_handle.inp_ctr;// ud_insn_len
 	insn->bytes = ud_insn_ptr(&(handle->dis_handle));
-	insn->insn_str = ud_insn_asm(&(handle->dis_handle));
+	insn->insn_str = handle->dis_handle.asm_buf;// ud_insn_asm
 }
 
 void ss_open(ss_mode mode, bool gen_insn_str, ss_handle* handle,

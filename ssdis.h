@@ -5,7 +5,7 @@
 #include <udis86.h>
 #include <pagealloc.h>
 
-#define RECORD_DISASM_STATS
+//#define RECORD_DISASM_STATS
 
 #ifdef RECORD_DISASM_STATS
 #include <time.h>
@@ -57,6 +57,9 @@ typedef uint8_t ss_mode;
 #define SS_INS_JP	UD_Ijp
 #define SS_INS_JRCXZ	UD_Ijrcxz
 #define SS_INS_JS	UD_Ijs
+#define SS_INS_LOOP UD_Iloop
+#define SS_INS_LOOPE UD_Iloope
+#define SS_INS_LOOPNE UD_Iloopne
 
 typedef struct ss_handle{
 	ud_t dis_handle; // Opaque handle for disassembler
