@@ -1,0 +1,7 @@
+*.o
+*.a
+*.gch
+.gdb_history
+peda-session-driver.txt
+driver
+driver64
